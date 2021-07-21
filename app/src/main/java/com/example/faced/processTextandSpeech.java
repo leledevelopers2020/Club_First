@@ -12,6 +12,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.smarteist.autoimageslider.IndicatorView.animation.type.IndicatorAnimationType;
@@ -55,7 +56,7 @@ public class processTextandSpeech extends AppCompatActivity {
     Handler handler=new Handler(Looper.getMainLooper());
     static Map<String,String> qstnAnswrSet = new HashMap<String,String>();
 
-
+  TextView inputLine;
 
 
 
@@ -67,7 +68,7 @@ public class processTextandSpeech extends AppCompatActivity {
         startAssistant();
         SliderView sliderView = findViewById(R.id.slideshow);
         ArrayList<SliderData> sliderDataArrayList = new ArrayList<>();
-
+         inputLine=(TextView)findViewById(R.id.speechToText);
         File path = getApplicationContext().getApplicationContext().getExternalFilesDir("Images/Ads");
         if (path.exists()) {
             List<File> files = Arrays.asList(path.listFiles());
@@ -118,11 +119,6 @@ public class processTextandSpeech extends AppCompatActivity {
                 getExcel();
             }
             break;
-            /*case 2:
-            {
-                stepByStep = 2;
-                startSpeakAndListening("User Input","Welcome to quzi!!","How may i help you?");
-            }*/
             default:
                 throw new IllegalStateException("Unexpected value: " + matched);
         }
@@ -145,6 +141,12 @@ public class processTextandSpeech extends AppCompatActivity {
         processTextandSpeechIMPLMNTATIONobj
                 .startSpeaking(msg1 + msg2, ModelClass.getActivity().getApplicationContext());
 
+    }
+
+    private  void speakingOnly(String msg1,String msg2)
+    {
+        processTextandSpeechIMPLMNTATIONobj
+                .startSpeaking(msg1 + msg2, ModelClass.getActivity().getApplicationContext());
     }
 
     private void startListening()
@@ -260,8 +262,8 @@ public class processTextandSpeech extends AppCompatActivity {
                                     FaceReconAPI faceReconAPI = FaceReconAPI.getFaceReconAPI();
                                     FaceReconAPI.convertBitmapToByteArray(CameraAPI.getCameraAPI().getCurrentBitmap());
                                     faceReconAPI.saveJSONFile(name,phoneNumber);
-                                    Toast.makeText(ModelClass.getActivity().getApplicationContext(),"taking you to quiz",Toast.LENGTH_LONG).show();
-                                    getExcel();
+                                  //  Toast.makeText(ModelClass.getActivity().getApplicationContext(),"taking you to quiz",Toast.LENGTH_LONG).show();
+                                    getExcel(); ////calling taking you to quiz
                                     stepByStep = 4;
                                 }
 
@@ -269,12 +271,14 @@ public class processTextandSpeech extends AppCompatActivity {
                             case 4:
                             {
                                 String question= stringBuffer.toString().toLowerCase();
+                                speechToText(1,question);
                                 Log.v("info ",question);
                                 Set<String> keys = Assistant.qstnAnswrSet.keySet();
                                 for (String key : keys) {
                                     if(question.contains(key.toLowerCase())){
                                         Log.v("info"," ans: "+Assistant.qstnAnswrSet.get(key));
-                                        speakingBox(null,Assistant.qstnAnswrSet.get(key),"");
+                                        speakingOnly(Assistant.qstnAnswrSet.get(key),"");
+                                        speechToText(0,Assistant.qstnAnswrSet.get(key));
                                         break;
                                     }
                                     //Log.v("info ", "question: "+ key +" & Answer: "+Assistant.qstnAnswrSet.get(key));
@@ -285,7 +289,8 @@ public class processTextandSpeech extends AppCompatActivity {
                                 handler.postDelayed(new Runnable() {
                                     @Override
                                     public void run() {
-                                        startSpeakAndListening(null,"Do you have any further questions?","Yes or No");
+                                        speakingOnly("Do you have any further questions?","Yes or No");
+                                        speechToText(0,"Do you have any further questions?Yes or No");
                                     }
                                 },3000);
                             }
@@ -294,13 +299,16 @@ public class processTextandSpeech extends AppCompatActivity {
                                 userReply = stringBuffer.toString();
                                 switch (userReply) {
                                     case "no": {
+                                        speechToText(1,userReply);
                                         stepByStep = 1;
                                         CameraAPI.getCameraAPI().captureImage(3000);
                                     }
                                     break;
                                     case "yes": {
+                                        speechToText(1,userReply);
                                         stepByStep = 4;
-                                        startSpeakAndListening(null,"I am glad to hear that!!","How may i help you?");
+                                        speakingOnly("I am glad to hear that!!","How may i help you?");
+                                        speechToText(0,"I am glad to hear that!! How may i help you?");
                                     }
                                     break;
 
@@ -407,7 +415,21 @@ public class processTextandSpeech extends AppCompatActivity {
         for (String key : keys) {
             Log.v("info ", "question: "+ key +" & Answer: "+Assistant.qstnAnswrSet.get(key));
         }
-        startSpeakAndListening(null,"Welcome to quiz!!","How may i help you?");
+        speakingOnly( "Welcome to quiz!!","How may i help you?");
+        speechToText(0,"Welcome to quiz!!How may i help you?");
+    }
+
+
+    private void speechToText(int response,String output )
+    {
+        if(response==0) //computer speaking data
+        {
+            inputLine.setText("Assistant Speaking: "+output);
+        }
+        else if(response==1) /// human input
+        {
+            inputLine.setText("User Spoke: "+output);
+        }
     }
 
 
