@@ -1,14 +1,11 @@
 package com.example.faced;
 
-import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.net.Uri;
 import android.util.Log;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -29,66 +26,28 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.support.image.ops.ResizeWithCropOrPadOp;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
 import java.util.List;
 
-public class FaceReconImp implements FaceRecon{
+public class FaceReconImp implements FaceRecon {
     static Interpreter tflite;
-    private  int i;
     protected int imageSizeX;
     protected int imageSizeY;
     private Context context;
-
     private static final float IMAGE_MEAN = 0.0f;
     private static final float IMAGE_STD = 1.0f;
-
-    private ImageView originalImage;
-    private ImageView randomImage;
-    private TextView resultText;
-
-    public Bitmap oriBitmap = null, textBitmap;
     public Bitmap cropped;
-    //private Bitmap bitmap;
-    //Uri imageUri;
-    File photoFile;
-    private String imagetype;
-
     static float[][] ori_embedding = null;
     float[][] test_embedding = null;
-    static int index=0;
-    private double previousDistance =0.0;
-    private Bitmap previousBitmap ;
-    private static ArrayList<Bitmap> bitmaps = new ArrayList<Bitmap>();
+    private double previousDistance = 0.0;
+    private int matchingIndex;
+    //private Bitmap previousBitmap;
 
     public FaceReconImp() {
         ori_embedding = new float[1][128];
-    }
-
-    public FaceReconImp(double k) {
-
-    }
-
-    @Override
-    public void loadCompents(ImageView originalImage, ImageView randomImage, TextView resultText) {
-        this.originalImage = originalImage;
-        this.randomImage = randomImage;
-        this.resultText = resultText;
-    }
-
-    @Override
-    synchronized public void displayInt(int i) {
-        Log.v("val i = ",i+"");
-        displayVal(i);
-    }
-
-    @Override
-    synchronized public void displayVal(int i) {
-        Log.v("val i+10 = ",(i+10)+"");
     }
 
     @Override
@@ -113,25 +72,14 @@ public class FaceReconImp implements FaceRecon{
     }
 
     @Override
-    synchronized public void face_detector(Bitmap bitmap, String imagetype) {
-        Log.v("val type = ","image type bit"+bitmap);
-        InputImage  image=null;
+    synchronized public void face_detector(Bitmap bitmap, String imagetype,int imageIndex) {
+        Log.v("val type = ", "image type bit" + bitmap);
+        InputImage image = null;
         try {
             image = InputImage.fromBitmap(bitmap, 0);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-      /* if(imagetype.equals("test")) {
-            image = InputImage.fromBitmap(bitmaps.get(index), 0);
-            if(index == (bitmaps.size()-1)){
-                index = 0;
-            } else {
-                index++;
-            }
-        }else {
-            image = InputImage.fromBitmap(bitmap, 0);
-        }*/
 
 
         Log.v("val imagebitmap ", "=" + bitmap);
@@ -143,7 +91,7 @@ public class FaceReconImp implements FaceRecon{
                             public void onSuccess(List<Face> faces) {
                                 // Task completed successfully
                                 Log.v("val no of faces ", "=" + faces.size());
-                                if(faces.size() == 0) {
+                               /* if(faces.size() == 0) {
                                     oriBitmap = null;
 
                                     new File(photoFile.getAbsoluteFile().toString()).delete();
@@ -152,7 +100,7 @@ public class FaceReconImp implements FaceRecon{
                                                     ",Please try again",
                                             Toast.LENGTH_LONG).show();
                                     return;
-                                }
+                                }*/
                                 Log.v("val faces ", "Proceed futher ");
                                 for (Face face : faces) {
                                     Rect bounds = face.getBoundingBox();
@@ -162,7 +110,7 @@ public class FaceReconImp implements FaceRecon{
                                     Log.v("bound h: ", bounds.height() + "");
                                     cropped = Bitmap.createBitmap(bitmap, bounds.left, bounds.top,
                                             bounds.width(), bounds.height());
-                                    get_embaddings(cropped, imagetype);
+                                    get_embaddings(cropped, imagetype,imageIndex);
                                 }
                             }
 
@@ -178,10 +126,8 @@ public class FaceReconImp implements FaceRecon{
     }
 
     @Override
-    synchronized public void get_embaddings(Bitmap bitmap, String imagetype) {
+    synchronized public void get_embaddings(Bitmap bitmap, String imagetype,int imageIndex) {
         test_embedding = new float[1][128];
-        Log.v("val -ori_emb add =", ori_embedding.toString());
-        Log.v("val -test_emb add=", test_embedding.toString());
         TensorImage inputImageBuffer;
         float[][] embedding = new float[1][128];
 
@@ -200,27 +146,54 @@ public class FaceReconImp implements FaceRecon{
         tflite.run(inputImageBuffer.getBuffer(), embedding);
 
         if (imagetype.equals("original"))
-            ori_embedding = embedding;
+        {    ori_embedding = embedding;
+            Log.v("val-imageIndex = ", imageIndex + "");
+        }
         else if (imagetype.equals("test")) {
             test_embedding = embedding;
             double val = calculate_distance(ori_embedding, test_embedding);
             Log.v("val-value = ", val + "");
-            // Log.v("val-preDistInit = ", previousDistance + "");
-            if(previousDistance == 0.0){
+            Log.v("val-imageIndex = ", imageIndex + "");
+            if (previousDistance == 0.0) {
                 previousDistance = val;
-                previousBitmap = bitmap;
+                //previousBitmap = bitmap;
+                matchingIndex = imageIndex;
             }
-            if(previousDistance >= val) {
+            if (previousDistance >= val) {
                 previousDistance = val;
-                // previousBitmap = bitmap;
-                //Log.v("val-preDistInit = ", previousBitmap + "");
-                if(previousDistance < 6.0) {
-                    randomImage.setImageBitmap(bitmap);
-                    resultText.setText("Result: Match found");
-                }else {
-                    randomImage.setImageBitmap(null);
-                    resultText.setText("Result: No Matches found");
+                matchingIndex = imageIndex;
+               /* if (previousDistance < 6.0) {
+
+                   // ModelClass.imageView.setImageBitmap(bitmap);
+                    ///noOfMatchImage++;
+                } else {
+                    //ModelClass.imageView.setImageBitmap(null);
+                    if (noOfMatchImage == 0) {
+                       // Toast.makeText(ModelClass.getActivity().getApplicationContext(),
+                                //"No matches found!!", Toast.LENGTH_LONG).show();
+                    }
+                }*/
+            }
+
+            if(imageIndex == FaceReconAPI.userDetails.size()-1){
+                Log.v("val- = ", "Found Match with " +matchingIndex);
+                if(previousDistance < 6.0){
+                    ModelClass.imageView.setImageBitmap(FaceReconAPI.userDetails.get(matchingIndex).getUserImage());
+                    processTextandSpeech.matched = 1;
+                    Log.v("val- ", "Welcome "+FaceReconAPI.userDetails.get(matchingIndex).getName());
+                } else {
+                    processTextandSpeech.matched = 0;
+                    ModelClass.imageView.setImageBitmap(null);
+                    Toast.makeText(ModelClass.getActivity().getApplicationContext(),
+                            "No matches found!!", Toast.LENGTH_LONG).show();
                 }
+                //new Assistant().startAssistant();
+                Context context = ModelClass.getActivity().getApplicationContext();
+                Intent intent = new Intent(context,processTextandSpeech.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                //start camera again
+                //CameraAPI.getCameraAPI().captureImage(5000);
             }
             Log.v("val-preDistInit = ", previousDistance + "");
         }
@@ -254,44 +227,11 @@ public class FaceReconImp implements FaceRecon{
         return Math.sqrt(sum);
     }
 
-    @Override
-    public void setResult(TextView textView) {
-        textView.setText("Results:");
-    }
-
-    @Override
-    public void loadFile(File photoFile) {
-        this.photoFile = photoFile;
-    }
-
-    /*public FaceReconImp(int i) {
-        this.i = i;
-    }
-
-    public FaceReconImp(Bitmap bitmap, String imagetype,int k) {
-        this.bitmap = bitmap;
-        this.imagetype = imagetype;
-        if(k == 0){
-            bitmaps.clear();
-        }
-        bitmaps.add(bitmap);
-        Log.v("val bitmap add",bitmaps.get(k).toString());
-    }
-
-    @Override
-    public void run() {
-        //displayInt(this.i);
-
-        face_detector(this.bitmap,this.imagetype);
-    }
-
-   */
-
     public void setPreviousDistance(double previousDistance) {
         this.previousDistance = previousDistance;
     }
 
-    public void reSetRandomImage() {
-        randomImage.setImageBitmap(null);
+    public void setMatchingIndex(int matchingIndex) {
+        this.matchingIndex = matchingIndex;
     }
 }
