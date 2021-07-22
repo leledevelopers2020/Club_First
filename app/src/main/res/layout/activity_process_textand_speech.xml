@@ -48,7 +48,7 @@
             android:layout_below="@+id/speechToText"
             android:layout_marginTop="25dp"
             android:textColor="@color/black"
-            android:text="Thank you we will be happy to serve you everytime"
+            android:text="We are here to serve you anytime"
             android:paddingStart="10dp"
             android:textSize="20dp"/>
     </RelativeLayout>

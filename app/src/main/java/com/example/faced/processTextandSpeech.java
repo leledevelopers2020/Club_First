@@ -147,6 +147,7 @@ public class processTextandSpeech extends AppCompatActivity {
     {
         processTextandSpeechIMPLMNTATIONobj
                 .startSpeaking(msg1 + msg2, ModelClass.getActivity().getApplicationContext());
+        startListening();
     }
 
     private void startListening()
